@@ -1,83 +1,95 @@
 package ru.geekbrains.cloud.cloudapp;
 
 import javafx.application.Platform;
-import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
-import javafx.scene.control.*;
-import javafx.util.Callback;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.layout.VBox;
 
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.format.DateTimeFormatter;
-import java.util.ResourceBundle;
-import java.util.stream.Collectors;
 
-public class MainController implements Initializable {
+
+public class MainController {
 
     @FXML
-    TableView<FileInfo> filesTable;
+    VBox clientPanel;
+    @FXML
+    VBox serverPanel;
+
+    PanelController clientPC;
+    PanelController serverPC;
 
     public void exitApp(ActionEvent actionEvent) {
         Platform.exit();
     }
 
-    @Override
-    public void initialize(URL url, ResourceBundle resourceBundle) {
-        TableColumn<FileInfo, String> fileTypeColumn = new TableColumn<>();
-        fileTypeColumn.setCellValueFactory(fileObject -> new SimpleStringProperty(fileObject.getValue().getType().getName()));
-        fileTypeColumn.setPrefWidth(24);
+    public void btnCopyAction(ActionEvent actionEvent) {
+        clientPC = (PanelController) clientPanel.getProperties().get("ctrl");
+        serverPC = (PanelController) serverPanel.getProperties().get("ctrl");
 
-        TableColumn<FileInfo, String> fileNameColumn = new TableColumn<>("Наименование");
-        fileNameColumn.setCellValueFactory(fileObject -> new SimpleStringProperty(fileObject.getValue().getFileName()));
-        fileNameColumn.setPrefWidth(200);
+        if(clientPC.getSelectedFilename() == null && serverPC.getSelectedFilename() == null) {
+            Alert alert = new Alert(Alert.AlertType.WARNING, "No files selected", ButtonType.OK);
+            alert.showAndWait();
+            return;
+        }
 
-        TableColumn<FileInfo, Long> fileSizeColumn = new TableColumn<>("Размер");
-        fileSizeColumn.setCellValueFactory(fileObject -> new SimpleObjectProperty<>(fileObject.getValue().getFileSize()));
-        fileSizeColumn.setPrefWidth(100);
-        fileSizeColumn.setCellFactory(column -> {
-            return new TableCell<FileInfo, Long>() {
-                @Override
-                protected void updateItem(Long aLong, boolean empty) {
-                    super.updateItem(aLong, empty);
-                    if (aLong == null || empty) {
-                        setText(null);
-                        setStyle("");
-                    } else {
-                        String text = String.format("%,d bytes", aLong);
-                        if (aLong == -1L) {
-                            text = "[DIR]";
-                        }
-                        setText(text);
-                    }
-                }
-            };
-        });
+        PanelController srcPC = null;
+        PanelController dstPC = null;
 
-        DateTimeFormatter dtf  = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
-        TableColumn<FileInfo, String> fileDateModColumn = new TableColumn<>("Дата изменения");
-        fileDateModColumn.setCellValueFactory(filObject -> new SimpleStringProperty(filObject.getValue().getFileModifiedAt().format(dtf)));
-        fileDateModColumn.setPrefWidth(150);
+        if (clientPC.getSelectedFilename() != null) {
+            srcPC = clientPC;
+            dstPC = serverPC;
+        }
 
+        if (serverPC.getSelectedFilename() != null) {
+            srcPC = serverPC;
+            dstPC = clientPC;
+        }
 
-        filesTable.getColumns().addAll(fileTypeColumn, fileNameColumn,  fileSizeColumn, fileDateModColumn);
+        Path srcPath = Paths.get(srcPC.getCurrentPath(), srcPC.getSelectedFilename());
+        Path dstPath = Paths.get(dstPC.getCurrentPath()).resolve(srcPC.getSelectedFilename().toString());
 
-        updateList(Paths.get("."));
-        filesTable.getSortOrder().add(fileTypeColumn);
-    }
-
-    public void updateList(Path path) {
         try {
-            filesTable.getItems().clear();
-            filesTable.getItems().addAll(Files.list(path).map(FileInfo::new).collect(Collectors.toList()));
+            Files.copy(srcPath, dstPath);
+            dstPC.updateList(Paths.get(dstPC.getCurrentPath()));
         } catch (IOException e) {
-            Alert alert = new Alert(Alert.AlertType.WARNING, "Cannot create list of files", ButtonType.OK);
+            Alert alert = new Alert(Alert.AlertType.WARNING, "File already exists", ButtonType.OK);
             alert.showAndWait();
         }
+    }
+
+    public void btnDeleteAction(ActionEvent actionEvent) {
+        clientPC = (PanelController) clientPanel.getProperties().get("ctrl");
+        serverPC = (PanelController) serverPanel.getProperties().get("ctrl");
+
+        if (clientPC.getSelectedFilename() != null) {
+
+            try {
+                Files.deleteIfExists(Paths.get(clientPC.getCurrentPath()).resolve(clientPC.getSelectedFilename().toString()));
+                clientPC.updateList(Paths.get(clientPC.getCurrentPath()));
+            } catch (IOException e) {
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Cannot delete file", ButtonType.OK);
+                alert.showAndWait();
+            }
+        }
+
+        if (serverPC.getSelectedFilename() != null) {
+            try {
+                Files.delete(Paths.get(serverPC.getCurrentPath()).resolve(serverPC.getSelectedFilename().toString()));
+                serverPC.updateList(Paths.get(serverPC.getCurrentPath()));
+            } catch (IOException e) {
+                Alert alert = new Alert(Alert.AlertType.ERROR, "Cannot delete file", ButtonType.OK);
+                alert.showAndWait();
+            }
+        }
+    }
+
+    public void btnMoveAction(ActionEvent actionEvent) {
+        btnCopyAction(actionEvent);
+        btnDeleteAction(actionEvent);
     }
 }
