@@ -19,7 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
-public class PanelController implements Initializable {
+public class ClientController implements Initializable {
     @FXML
     TableView<FileInfo> filesTable;
 

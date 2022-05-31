@@ -7,6 +7,9 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.layout.VBox;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,16 +23,16 @@ public class MainController {
     @FXML
     VBox serverPanel;
 
-    PanelController clientPC;
-    PanelController serverPC;
+    ClientController clientPC;
+    ServerController serverPC;
 
     public void exitApp(ActionEvent actionEvent) {
         Platform.exit();
     }
 
-    public void btnCopyAction(ActionEvent actionEvent) {
-        clientPC = (PanelController) clientPanel.getProperties().get("ctrl");
-        serverPC = (PanelController) serverPanel.getProperties().get("ctrl");
+    public void btnCopyAction(ActionEvent actionEvent) throws IOException {
+        clientPC = (ClientController) clientPanel.getProperties().get("ctrl");
+        serverPC = (ServerController) serverPanel.getProperties().get("ctrl");
 
         if(clientPC.getSelectedFilename() == null && serverPC.getSelectedFilename() == null) {
             Alert alert = new Alert(Alert.AlertType.WARNING, "No files selected", ButtonType.OK);
@@ -37,59 +40,72 @@ public class MainController {
             return;
         }
 
-        PanelController srcPC = null;
-        PanelController dstPC = null;
+//        ClientController srcPC = null;
+//        ClientController dstPC = null;
+
 
         if (clientPC.getSelectedFilename() != null) {
-            srcPC = clientPC;
-            dstPC = serverPC;
+//            ClientController srcPC = clientPC;
+//            ServerController dstPC = serverPC;
+            serverPC.getNetwork().getOutputStream().writeUTF("#file#");
+            String file = Paths.get(clientPC.getSelectedFilename()).toString();
+            serverPC.getNetwork().getOutputStream().writeUTF(file);
+            File toSend = Paths.get(clientPC.getCurrentPath()).resolve(clientPC.getSelectedFilename()).toFile();
+            serverPC.getNetwork().getOutputStream().writeUTF(file);
+            try (FileInputStream fis = new FileInputStream(toSend)) {
+                while (fis.available() > 0) {
+                    int read = fis.read(serverPC.getBuffer());
+                    serverPC.getNetwork().getOutputStream().write(serverPC.getBuffer(), 0, read);
+                }
+            }
+            serverPC.getNetwork().getOutputStream().flush();
         }
 
         if (serverPC.getSelectedFilename() != null) {
-            srcPC = serverPC;
-            dstPC = clientPC;
+//            ServerController srcPC = serverPC;
+//            ClientController dstPC = clientPC;
         }
 
-        Path srcPath = Paths.get(srcPC.getCurrentPath(), srcPC.getSelectedFilename());
-        Path dstPath = Paths.get(dstPC.getCurrentPath()).resolve(srcPC.getSelectedFilename().toString());
+//        Path srcPath = Paths.get(srcPC.getCurrentPath(), srcPC.getSelectedFilename());
+//        Path dstPath = Paths.get(dstPC.getCurrentPath()).resolve(srcPC.getSelectedFilename().toString());
 
-        try {
-            Files.copy(srcPath, dstPath);
-            dstPC.updateList(Paths.get(dstPC.getCurrentPath()));
-        } catch (IOException e) {
-            Alert alert = new Alert(Alert.AlertType.WARNING, "File already exists", ButtonType.OK);
-            alert.showAndWait();
-        }
+//        try {
+//            Files.copy(srcPath, dstPath);
+//            dstPC.updateList(Paths.get(dstPC.getCurrentPath()));
+//        } catch (IOException e) {
+//            Alert alert = new Alert(Alert.AlertType.WARNING, "File already exists", ButtonType.OK);
+//            alert.showAndWait();
+//        }
     }
 
     public void btnDeleteAction(ActionEvent actionEvent) {
-        clientPC = (PanelController) clientPanel.getProperties().get("ctrl");
-        serverPC = (PanelController) serverPanel.getProperties().get("ctrl");
-
-        if (clientPC.getSelectedFilename() != null) {
-
-            try {
-                Files.deleteIfExists(Paths.get(clientPC.getCurrentPath()).resolve(clientPC.getSelectedFilename().toString()));
-                clientPC.updateList(Paths.get(clientPC.getCurrentPath()));
-            } catch (IOException e) {
-                Alert alert = new Alert(Alert.AlertType.ERROR, "Cannot delete file", ButtonType.OK);
-                alert.showAndWait();
-            }
-        }
-
-        if (serverPC.getSelectedFilename() != null) {
-            try {
-                Files.delete(Paths.get(serverPC.getCurrentPath()).resolve(serverPC.getSelectedFilename().toString()));
-                serverPC.updateList(Paths.get(serverPC.getCurrentPath()));
-            } catch (IOException e) {
-                Alert alert = new Alert(Alert.AlertType.ERROR, "Cannot delete file", ButtonType.OK);
-                alert.showAndWait();
-            }
-        }
+//        clientPC = (ClientController) clientPanel.getProperties().get("ctrl");
+//        serverPC = (ServerController) serverPanel.getProperties().get("ctrl");
+//
+//        if (clientPC.getSelectedFilename() != null) {
+//
+//            try {
+//                Files.deleteIfExists(Paths.get(clientPC.getCurrentPath()).resolve(clientPC.getSelectedFilename().toString()));
+//                clientPC.updateList(Paths.get(clientPC.getCurrentPath()));
+//            } catch (IOException e) {
+//                Alert alert = new Alert(Alert.AlertType.ERROR, "Cannot delete file", ButtonType.OK);
+//                alert.showAndWait();
+//            }
+//        }
+//
+//        if (serverPC.getSelectedFilename() != null) {
+//            try {
+//                Files.delete(Paths.get(serverPC.getCurrentPath()).resolve(serverPC.getSelectedFilename().toString()));
+//                serverPC.updateList(Paths.get(serverPC.getCurrentPath()));
+//            } catch (IOException e) {
+//                Alert alert = new Alert(Alert.AlertType.ERROR, "Cannot delete file", ButtonType.OK);
+//                alert.showAndWait();
+//            }
+//        }
     }
 
     public void btnMoveAction(ActionEvent actionEvent) {
-        btnCopyAction(actionEvent);
-        btnDeleteAction(actionEvent);
+//        btnCopyAction(actionEvent);
+//        btnDeleteAction(actionEvent);
     }
 }
